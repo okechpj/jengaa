@@ -1,0 +1,102 @@
+// Firestore Security Rules for Services Collection
+// Deploy these rules to your Firebase project for production security
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    function isProvider() {
+      return isAuthenticated() && 
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'PROVIDER' ||
+              isAdmin());
+    }
+
+    function isServiceOwner(serviceId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/services/$(serviceId)).data.providerId == request.auth.uid;
+    }
+
+    function isValidCategory(category) {
+      return category in [
+        'cleaning',
+        'plumbing',
+        'electrical',
+        'carpentry',
+        'painting',
+        'landscaping',
+        'hvac',
+        'appliance-repair'
+      ];
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || request.auth.uid == userId;
+    }
+
+    // Services collection
+    match /services/{serviceId} {
+      // List services (with filters)
+      allow list: if isAuthenticated();
+      
+      // Read a specific service
+      allow get: if isAuthenticated();
+      
+      // Create a new service
+      allow create: if isProvider() &&
+                      request.resource.data.providerId == request.auth.uid &&
+                      request.resource.data.title is string &&
+                      request.resource.data.description is string &&
+                      request.resource.data.category is string &&
+                      isValidCategory(request.resource.data.category) &&
+                      request.resource.data.price is number &&
+                      request.resource.data.price >= 0 &&
+                      request.resource.data.ratingAverage == 0 &&
+                      request.resource.data.reviewsCount == 0 &&
+                      request.resource.data.isActive == true &&
+                      request.resource.data.keys().hasAll(['providerId', 'title', 'description', 'category', 'price', 'ratingAverage', 'reviewsCount', 'isActive', 'createdAt', 'updatedAt']);
+      
+      // Update a service
+      allow update: if isProvider() &&
+                       (isServiceOwner(serviceId) || isAdmin()) &&
+                       // Cannot update protected fields
+                       !('providerId' in request.writeFields) &&
+                       !('ratingAverage' in request.writeFields) &&
+                       !('reviewsCount' in request.writeFields) &&
+                       !('createdAt' in request.writeFields) &&
+                       // Validate category if being updated
+                       (!('category' in request.writeFields) || isValidCategory(request.resource.data.category)) &&
+                       // Validate price if being updated
+                       (!('price' in request.writeFields) || request.resource.data.price >= 0);
+      
+      // Delete a service
+      allow delete: if isProvider() &&
+                       (isServiceOwner(serviceId) || isAdmin());
+    }
+
+    // Bookings collection (for reference in delete operations)
+    match /bookings/{bookingId} {
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+                       request.resource.data.clientId == request.auth.uid;
+      allow update, delete: if isAuthenticated() &&
+                               (request.resource.data.clientId == request.auth.uid || isAdmin());
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
