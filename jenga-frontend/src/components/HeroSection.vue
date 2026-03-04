@@ -45,24 +45,12 @@ import { Search } from 'lucide-vue-next';
             <div class="absolute -top-10 -right-10 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
             <div class="absolute -bottom-10 -left-10 w-96 h-96 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
             
-            <!-- Main Image Placeholder (using a reliable placeholder that looks decent) -->
+            <!-- Main Image Placeholder (background image for better responsiveness) -->
             <div class="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50">
-               <img src="https://images.unsplash.com/photo-1581578731117-104f2a863a30?auto=format&fit=crop&w=800&q=80" alt="Professional Worker" class="object-cover w-full h-[500px]" />
-               
+               <div class="w-full h-[500px] hero-pattern" role="img" aria-label="Decorative pattern representing professional services"></div>
+
                <!-- Floating Card -->
-               <div class="absolute bottom-8 left-8 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/50 max-w-xs animate-bounce-slow">
-                 <div class="flex items-center gap-3">
-                   <div class="bg-green-100 p-2 rounded-full">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                     </svg>
-                   </div>
-                   <div>
-                     <p class="text-xs text-gray-500">Service Status</p>
-                     <p class="text-sm font-bold text-gray-800">Job Completed!</p>
-                   </div>
-                 </div>
-               </div>
+               
             </div>
         </div>
       </div>
@@ -85,5 +73,17 @@ import { Search } from 'lucide-vue-next';
   33% { transform: translate(30px, -50px) scale(1.1); }
   66% { transform: translate(-20px, 20px) scale(0.9); }
   100% { transform: translate(0px, 0px) scale(1); }
+}
+
+/* Pattern background for hero (subtle blue/green diagonal grid) */
+.hero-pattern {
+  background-color: #eaf6ff;
+  background-image:
+    linear-gradient(135deg, rgba(16,185,129,0.06) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(30,58,138,0.04) 25%, transparent 25%),
+    linear-gradient(45deg, rgba(16,185,129,0.06) 25%, transparent 25%),
+    linear-gradient(315deg, rgba(30,58,138,0.04) 25%, transparent 25%);
+  background-size: 40px 40px, 40px 40px, 40px 40px, 40px 40px;
+  background-position: 0 0, 0 0, 20px 20px, 20px 20px;
 }
 </style>

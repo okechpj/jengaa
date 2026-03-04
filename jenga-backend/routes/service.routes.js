@@ -6,10 +6,18 @@ const {
   getServiceById,
   getServicesByProviderId,
   updateService,
-  deleteService
+  deleteService,
+  getCategories
 } = require("../controllers/service.controller");
 const { authenticate, requireProvider, requireAdmin } = require("../middleware/auth");
 // Authentication removed from routes per request
+
+/**
+ * GET /services/categories
+ * Get all available service categories
+ * Public endpoint
+ */
+router.get("/categories", getCategories);
 
 /**
  * POST /services

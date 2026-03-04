@@ -253,11 +253,31 @@ const deleteService = async (req, res) => {
   }
 };
 
+/**
+ * GET /services/categories
+ * Get all available service categories
+ */
+const getCategories = async (req, res) => {
+  try {
+    const categories = serviceData.getAllCategories();
+    return res.json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createService,
   getAllServices,
   getServiceById,
   getServicesByProviderId,
   updateService,
-  deleteService
+  deleteService,
+  getCategories
 };

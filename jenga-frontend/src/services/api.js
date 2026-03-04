@@ -21,6 +21,7 @@ api.interceptors.request.use(
 );
 
 export const getServices = (params) => api.get('/services', { params });
+export const getCategories = () => api.get('/services/categories');
 export const getProviderServices = (providerId) => api.get(`/services/provider/${providerId}`);
 
 export const getProviderBookings = (userId) => api.get(`/bookings/user/${userId}`);

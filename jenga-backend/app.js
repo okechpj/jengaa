@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const userRoutes = require("./routes/user.routes");
 const serviceRoutes = require("./routes/service.routes");
 const bookingsRoutes = require("./routes/bookings.routes");
@@ -20,8 +20,10 @@ app.use("/auth", authRoutes);
 app.use("/reviews", reviewsRoutes);
 
 
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Example app listening at http://localhost:${port}`);
+  });
+}
 
 module.exports = app;

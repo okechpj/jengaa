@@ -65,6 +65,11 @@ const router = createRouter({
             component: () => import('../views/ClientBookings.vue'),
             meta: { requiresAuth: true }
         },
+        {
+            path: '/category/:category',
+            name: 'category-services',
+            component: () => import('../views/CategoryServicesView.vue')
+        },
         { path: '/profile', redirect: '/dashboard' },
         { path: '/help', redirect: '/dashboard' }
     ],

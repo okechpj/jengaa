@@ -14,6 +14,85 @@ const VALID_CATEGORIES = [
   "appliance-repair"
 ];
 
+// Category metadata for frontend display
+const CATEGORY_METADATA = {
+  cleaning: {
+    name: "Cleaning",
+    description: "Professional Cleaners",
+    icon: "Droplet",
+    color: "text-cyan-500",
+    bg: "bg-cyan-50",
+    image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=400&q=80"
+  },
+  plumbing: {
+    name: "Plumbing",
+    description: "Expert Plumbers",
+    icon: "Wrench",
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    image: "https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=400&q=80"
+  },
+  electrical: {
+    name: "Electrical",
+    description: "Certified Electricians",
+    icon: "Zap",
+    color: "text-yellow-500",
+    bg: "bg-yellow-50",
+    image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80"
+  },
+  carpentry: {
+    name: "Carpentry",
+    description: "Skilled Carpenters",
+    icon: "Hammer",
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+    image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&q=80"
+  },
+  painting: {
+    name: "Painting",
+    description: "Professional Painters",
+    icon: "Paintbrush",
+    color: "text-purple-500",
+    bg: "bg-purple-50",
+    image: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=400&q=80"
+  },
+  landscaping: {
+    name: "Landscaping",
+    description: "Garden & Lawn Experts",
+    icon: "Trees",
+    color: "text-green-500",
+    bg: "bg-green-50",
+    image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=400&q=80"
+  },
+  hvac: {
+    name: "HVAC",
+    description: "Heating & Cooling",
+    icon: "Wind",
+    color: "text-sky-500",
+    bg: "bg-sky-50",
+    image: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=400&q=80"
+  },
+  "appliance-repair": {
+    name: "Appliance Repair",
+    description: "Home Appliance Fixes",
+    icon: "Briefcase",
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=80"
+  }
+};
+
+/**
+ * Gets all available categories with metadata
+ * @returns {Array} Array of category objects
+ */
+const getAllCategories = () => {
+  return VALID_CATEGORIES.map(slug => ({
+    slug,
+    ...CATEGORY_METADATA[slug]
+  }));
+};
+
 /**
  * Validates required and allowed fields for service creation/update
  */
@@ -430,5 +509,6 @@ module.exports = {
   getServicesByProviderId,
   updateService,
   deleteService,
-  updateServiceRating
+  updateServiceRating,
+  getAllCategories
 };
