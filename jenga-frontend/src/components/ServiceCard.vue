@@ -12,7 +12,8 @@ const props = defineProps({
 });
 
 const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
+    const num = typeof price === 'number' ? price : parseFloat(price) || 0;
+    return `Ksh. ${new Intl.NumberFormat('en-KE', { maximumFractionDigits: 2 }).format(num)}`;
 };
 
 // Placeholder images based on category (mapping to Unsplash or similar if available, else generic)
@@ -32,9 +33,9 @@ const getCategoryImage = (category) => {
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
-    <div class="relative h-48 bg-gray-100">
-        <img :src="getCategoryImage(service.category)" :alt="service.title" class="w-full h-full object-cover" />
+    <div @click="$emit('open', service.id)" class="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full cursor-pointer">
+        <div class="relative h-48 bg-gray-100">
+                <img :src="service.image || getCategoryImage(service.category)" :alt="service.title" class="w-full h-full object-cover" />
         <button class="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -56,7 +57,7 @@ const getCategoryImage = (category) => {
        <div class="mt-auto flex items-center justify-between">
            <div class="font-bold text-lg text-gray-900">{{ formatPrice(service.price) }}</div>
            <button 
-                @click="router.push(`/booking/${service.id}`)"
+                @click.stop="router.push(`/booking/${service.id}`)"
                 class="px-4 py-2 bg-blue-50 text-blue-700 font-semibold rounded-lg hover:bg-blue-100 transition text-sm">
                Book Now
            </button>

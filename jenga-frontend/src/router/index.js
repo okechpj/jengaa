@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import AuthView from '../views/AuthView.vue'
 import ClientDashboard from '../views/ClientDashboard.vue';
 import ProviderDashboard from '../views/provider/ProviderDashboard.vue';
+import ErrorView from '../views/ErrorView.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -70,6 +71,13 @@ const router = createRouter({
             name: 'category-services',
             component: () => import('../views/CategoryServicesView.vue')
         },
+        {
+            path: '/error',
+            name: 'error',
+            component: ErrorView
+        },
+        // catch-all -> error page
+        { path: '/:pathMatch(.*)*', name: 'not-found', redirect: '/error' },
         { path: '/profile', redirect: '/dashboard' },
         { path: '/help', redirect: '/dashboard' }
     ],

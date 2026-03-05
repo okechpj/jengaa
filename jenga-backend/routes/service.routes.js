@@ -10,58 +10,46 @@ const {
   getCategories
 } = require("../controllers/service.controller");
 const { authenticate, requireProvider, requireAdmin } = require("../middleware/auth");
-// Authentication removed from routes per request
 
 /**
  * GET /services/categories
- * Get all available service categories
- * Public endpoint
+ * Public - returns available categories
  */
 router.get("/categories", getCategories);
 
 /**
  * POST /services
- * Create a new service
- * Required: Authentication + PROVIDER role
+ * Create a new service (Provider only)
  */
 router.post("/", authenticate, requireProvider, createService);
 
 /**
  * GET /services
- * Get all active services with pagination and optional filters
- * Required: Authentication
- * Query params: limit, startAfter, category, minPrice, maxPrice, orderBy
+ * Public - list active services with optional filters
  */
 router.get("/", getAllServices);
 
 /**
  * GET /services/provider/:providerId
- * Get all services by a specific provider
- * Required: Authentication
- * Query params: limit, startAfter, includeInactive
+ * Get services for a provider (authenticated)
  */
 router.get("/provider/:providerId", authenticate, getServicesByProviderId);
 
 /**
  * GET /services/:id
- * Get a specific service by ID
- * Required: Authentication
+ * Public - get a specific service by ID
  */
-router.get("/:id", authenticate, getServiceById);
+router.get("/:id", getServiceById);
 
 /**
  * PATCH /services/:id
- * Update a service
- * Required: Authentication + PROVIDER role + ownership verification
- * Allowed fields: title, description, category, price
+ * Update a service (Provider only, ownership verified)
  */
 router.patch("/:id", authenticate, requireProvider, updateService);
 
 /**
  * DELETE /services/:id
- * Delete a service (soft or hard delete)
- * Required: Authentication + PROVIDER role + ownership verification
- * Soft delete if bookings exist, hard delete otherwise
+ * Delete a service (Provider + Admin checks as configured in controller)
  */
 router.delete("/:id", authenticate, requireProvider, requireAdmin, deleteService);
 

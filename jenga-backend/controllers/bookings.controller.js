@@ -98,6 +98,23 @@ const acceptBooking = async (req, res) => {
   }
 };
 
+const setProviderNotes = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { notes } = req.body;
+    if (!req.user || !req.user.uid) return res.status(401).json({ success: false, error: "Authentication required" });
+
+    const providerId = req.user.uid;
+    const updated = await bookingsData.updateBookingNotes(bookingId, providerId, notes);
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    const msg = err.message || "Error updating notes";
+    if (msg.includes("Unauthorized")) return res.status(403).json({ success: false, error: msg });
+    if (msg.includes("not found")) return res.status(404).json({ success: false, error: msg });
+    return res.status(400).json({ success: false, error: msg });
+  }
+};
+
 const declineBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -141,4 +158,6 @@ module.exports = {
   acceptBooking,
   declineBooking,
   updateLocation
+  ,
+  setProviderNotes
 };

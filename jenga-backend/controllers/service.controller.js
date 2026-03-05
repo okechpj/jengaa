@@ -6,7 +6,7 @@ const serviceData = require("../data/service.data");
  */
 const createService = async (req, res) => {
   try {
-    const { title, description, category, price } = req.body;
+    const { title, description, category, price, image } = req.body;
 
     // Require authenticated user
     if (!req.user || !req.user.uid) {
@@ -22,7 +22,8 @@ const createService = async (req, res) => {
         title,
         description,
         category,
-        price
+        price,
+        image
       }
     );
 
@@ -158,7 +159,7 @@ const updateService = async (req, res) => {
     const providerId = req.user.uid;
 
     // Only allow updating specific fields
-    const allowedFields = ["title", "description", "category", "price"];
+    const allowedFields = ["title", "description", "category", "price", "image"];
     const updateData = {};
 
     allowedFields.forEach(field => {

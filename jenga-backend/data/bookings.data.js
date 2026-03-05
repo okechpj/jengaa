@@ -37,6 +37,7 @@ const createBooking = async (clientId, clientName, { serviceId, scheduledDate },
 
   // Fetch service
   const service = await serviceData.getServiceById(serviceId);
+  const userData = require("./user.data");
   if (!service) throw new Error("Service not found or inactive");
 
   // Prevent provider booking own service
@@ -63,10 +64,27 @@ const createBooking = async (clientId, clientName, { serviceId, scheduledDate },
     }
   }
 
+  // Try to resolve provider display info from users collection if available
+  let providerName = service.providerName || null;
+  let providerAvatar = null;
+  try {
+    if (service.providerId) {
+      const providerUser = await userData.getUserById(service.providerId);
+      if (providerUser) {
+        providerName = providerName || providerUser.name || null;
+        providerAvatar = providerUser.avatar || null;
+      }
+    }
+  } catch (e) {
+    // ignore user lookup failures, fall back to service data
+  }
+
   const docRef = await collection.add({
     clientId,
     clientName,
     providerId: service.providerId,
+    providerName: providerName,
+    providerAvatar: providerAvatar || null,
     serviceId,
     serviceTitle: service.title,
     servicePrice: service.price,
@@ -77,6 +95,7 @@ const createBooking = async (clientId, clientName, { serviceId, scheduledDate },
     urgency: options.urgency || 'STANDARD',
     description: options.description || '',
     providerLocation: null, // Initial provider location is null until they accept/update
+    providerNotes: null,
 
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp()
@@ -204,10 +223,30 @@ const updateBookingLocation = async (bookingId, providerLocation) => {
   return { success: true };
 };
 
+const updateBookingNotes = async (bookingId, providerId, notes) => {
+  if (!bookingId) throw new Error("Booking ID is required");
+  if (!providerId) throw new Error("providerId is required");
+
+  const docRef = collection.doc(bookingId);
+  const doc = await docRef.get();
+  if (!doc.exists) throw new Error("Booking not found");
+
+  const booking = doc.data();
+  if (booking.providerId !== providerId) {
+    throw new Error("Unauthorized: Only the provider can update provider notes");
+  }
+
+  await docRef.update({ providerNotes: notes || null, updatedAt: FieldValue.serverTimestamp() });
+  const updated = await docRef.get();
+  return { id: updated.id, ...updated.data() };
+};
+
 module.exports = {
   createBooking,
   getBookingsForUser,
   getBookingById,
   updateBookingStatus,
   updateBookingLocation
+  ,
+  updateBookingNotes
 };

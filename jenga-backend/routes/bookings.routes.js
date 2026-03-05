@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { createBooking, getBookingsForUser, updateBookingStatus, getBookingById, acceptBooking, declineBooking, updateLocation } = require("../controllers/bookings.controller");
-const { authenticate, requireClient } = require("../middleware/auth");
+const { createBooking, getBookingsForUser, updateBookingStatus, getBookingById, acceptBooking, declineBooking, updateLocation, setProviderNotes } = require("../controllers/bookings.controller");
+const { authenticate, requireClient, requireProvider } = require("../middleware/auth");
 
 // POST /bookings - create a booking (CLIENT only)
 router.post("/", authenticate, requireClient, createBooking);
@@ -23,5 +23,8 @@ router.patch("/:id/decline", authenticate, declineBooking);
 
 // PATCH /bookings/:id/location - provider update location
 router.patch("/:id/location", authenticate, updateLocation);
+
+// PATCH /bookings/:id/notes - provider add/update short notes on booking
+router.patch("/:id/notes", authenticate, requireProvider, setProviderNotes);
 
 module.exports = router;

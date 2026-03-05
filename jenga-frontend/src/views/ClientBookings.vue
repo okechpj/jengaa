@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
-import { getProviderBookings } from '../services/api'; // Works for users too
+import { getProviderBookings, getServiceById } from '../services/api'; // Works for users too
 import { Calendar, AlertCircle } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -14,7 +14,24 @@ const fetchBookings = async () => {
     if (!user.id) return;
     try {
         const response = await getProviderBookings(user.id);
-        bookings.value = response.data.data;
+        bookings.value = response.data.data || [];
+
+        // For any booking missing providerName, fetch service to extract provider info
+        const needServiceFetch = bookings.value.filter(b => !b.providerName && b.serviceId);
+        if (needServiceFetch.length) {
+            await Promise.all(needServiceFetch.map(async (b) => {
+                try {
+                    const svcRes = await getServiceById(b.serviceId);
+                    const svc = svcRes?.data?.data;
+                    if (svc) {
+                        b.providerName = b.providerName || svc.providerName || svc.provider || null;
+                        if (svc.providerAvatar) b.providerAvatar = svc.providerAvatar;
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch service for booking', b.id, e);
+                }
+            }));
+        }
     } catch (error) {
         console.error("Failed to fetch bookings", error);
     } finally {
@@ -22,18 +39,31 @@ const fetchBookings = async () => {
     }
 };
 
-const formatDate = (dateString) => {
-    if(!dateString) return 'N/A';
-    if (dateString.seconds) {
-        return new Date(dateString.seconds * 1000).toLocaleDateString(undefined, {
-            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
+/**
+ * Parse Firestore Timestamp shapes or ISO strings into Date
+ */
+const parseDate = (d) => {
+    if (!d) return null;
+    if (d.seconds && typeof d.seconds === 'number') return new Date(d.seconds * 1000);
+    if (d._seconds && typeof d._seconds === 'number') return new Date(d._seconds * 1000);
+    if (typeof d === 'string') {
+        const dt = new Date(d);
+        return isNaN(dt.getTime()) ? null : dt;
     }
-    return new Date(dateString).toLocaleDateString(undefined, {
-            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
+    if (d.toDate && typeof d.toDate === 'function') return d.toDate();
+    if (d instanceof Date) return d;
+    return null;
+};
+
+const formatDate = (dateString) => {
+    const dt = parseDate(dateString);
+    if (!dt) return 'N/A';
+    return dt.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+};
+
+const formatKsh = (amount) => {
+    const n = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+    return `Ksh. ${n.toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 };
 
 const getStatusColor = (status) => {
@@ -100,7 +130,7 @@ onMounted(fetchBookings);
                  </div>
 
                  <div class="flex items-center gap-6 md:ml-auto w-full md:w-auto justify-between md:justify-end">
-                     <div class="font-bold text-blue-900 text-xl">${{ booking.servicePrice || '0.00' }}</div>
+                     <div class="font-bold text-blue-900 text-xl">{{ formatKsh(booking.servicePrice) }}</div>
                      <button class="text-gray-400 group-hover:text-blue-700 transition">
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

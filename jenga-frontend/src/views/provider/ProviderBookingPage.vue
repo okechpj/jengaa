@@ -3,13 +3,14 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from '../../components/Navbar.vue';
 import { MapPin, Calendar, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-vue-next';
-import { getBookingById, acceptBooking, declineBooking } from '../../services/api';
+import { getBookingById, acceptBooking, declineBooking, updateBookingNotes } from '../../services/api';
 
 const route = useRoute();
 const router = useRouter();
 const booking = ref(null);
 const isLoading = ref(true);
 const isProcessing = ref(false);
+const providerNotes = ref('');
 
 const mapContainer = ref(null);
 let map = null;
@@ -18,6 +19,7 @@ const fetchBooking = async () => {
     try {
         const response = await getBookingById(route.params.bookingId);
         booking.value = response.data.data;
+        providerNotes.value = booking.value.providerNotes || '';
     } catch (err) {
         console.error("Failed to fetch booking", err);
     } finally {
@@ -53,17 +55,22 @@ const initMap = () => {
 onMounted(fetchBooking);
 
 const handleAccept = async () => {
-    if(!confirm("Accept this job? Notifying client...")) return;
+    const details = `Service: ${booking.value?.serviceTitle || 'N/A'}\nDate: ${formatDate(booking.value?.scheduledDate)} ${formatTime(booking.value?.scheduledDate)}\n\nNotes: ${providerNotes.value || '(none)'}\n\nAccept this job and notify client?`;
+    if (!confirm(details)) return;
     isProcessing.value = true;
     try {
+        // Auto-save notes before accepting
+        try {
+            await saveNotes();
+        } catch (e) {
+            console.warn('Failed to auto-save notes before accept', e);
+        }
+
         await acceptBooking(booking.value.id);
-        alert("Booking Accepted! Redirecting to tracking...");
-        // Redirect to tracking or provider dashboard
-        // For this task, maybe we redirect to dashboard or stay here?
-        // "Redirect provider to tracking view" per instructions
+        alert('Booking Accepted! Redirecting to tracking...');
         router.push(`/booking/track/${booking.value.id}`);
     } catch (err) {
-        alert(err.response?.data?.error || "Failed");
+        alert(err.response?.data?.error || 'Failed');
     } finally {
         isProcessing.value = false;
     }
@@ -78,6 +85,19 @@ const handleDecline = async () => {
         router.push('/provider/dashboard');
     } catch (err) {
         alert(err.response?.data?.error || "Failed");
+    } finally {
+        isProcessing.value = false;
+    }
+};
+
+const saveNotes = async () => {
+    if (!booking.value || !booking.value.id) return;
+    isProcessing.value = true;
+    try {
+        await updateBookingNotes(booking.value.id, { notes: providerNotes.value });
+        alert('Notes saved');
+    } catch (err) {
+        alert(err.response?.data?.error || 'Failed to save notes');
     } finally {
         isProcessing.value = false;
     }
@@ -153,6 +173,17 @@ const formatTime = (dateString) => {
                       {{ booking.description }}
                   </p>
               </div>
+
+                          <!-- Short Notes (Provider editable) -->
+                          <div class="mb-8">
+                              <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Short Notes</h3>
+                              <textarea v-model="providerNotes" placeholder="Add short notes for this booking (visible to client)" class="w-full bg-white border border-gray-200 rounded-xl p-4 text-gray-900 placeholder-gray-400 h-28"></textarea>
+                              <div class="flex justify-end mt-3">
+                                  <button @click="saveNotes" :disabled="isProcessing" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded-xl disabled:opacity-60">
+                                      Save Notes
+                                  </button>
+                              </div>
+                          </div>
 
               <!-- Actions -->
               <div v-if="booking.status === 'PENDING'" class="grid grid-cols-2 gap-4">

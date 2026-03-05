@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
 import ServiceCard from '../components/ServiceCard.vue';
+import ServiceDetailModal from '../components/ServiceDetailModal.vue';
 import { Search, Bell, Settings, Zap, Shield, HelpCircle } from 'lucide-vue-next';
 import { getServices } from '../services/api';
 
@@ -71,6 +72,19 @@ const filteredServices = computed(() => {
     service.description.toLowerCase().includes(query)
   );
 });
+
+const selectedServiceId = ref(null);
+const showDetailModal = ref(false);
+
+const openService = (id) => {
+    selectedServiceId.value = id;
+    showDetailModal.value = true;
+};
+
+const closeDetail = () => {
+    selectedServiceId.value = null;
+    showDetailModal.value = false;
+};
 
 const selectCategory = (categoryId) => {
     if (selectedCategory.value === categoryId) {
@@ -190,9 +204,12 @@ const selectCategory = (categoryId) => {
                     v-for="service in filteredServices" 
                     :key="service.id" 
                     :service="service" 
+                                        @open="openService"
                   />
               </div>
           </section>
+
+                    <ServiceDetailModal :isOpen="showDetailModal" :serviceId="selectedServiceId" @close="closeDetail" />
 
           <!-- Promo Section (Emergency & Benefits) -->
           <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -104,7 +104,8 @@ const validateServiceData = (data, isUpdate = false) => {
     "title",
     "description",
     "category",
-    "price"
+    "price",
+    "image"
   ];
   const providedFields = Object.keys(data);
   const unknownFields = providedFields.filter(f => !allowedFields.includes(f));
@@ -143,6 +144,9 @@ const validateServiceData = (data, isUpdate = false) => {
     if (data.price !== undefined && typeof data.price !== "number") {
       errors.push("price must be a number");
     }
+    if (data.image !== undefined && typeof data.image !== "string") {
+      errors.push("image must be a string (URL)");
+    }
   }
 
   // Validate category if provided
@@ -163,6 +167,11 @@ const validateServiceData = (data, isUpdate = false) => {
   }
   if (data.description && data.description.trim().length === 0) {
     errors.push("description cannot be empty");
+  }
+
+  // Validate image URL if provided
+  if (data.image && typeof data.image === 'string' && data.image.trim().length === 0) {
+    errors.push("image cannot be empty string");
   }
 
   if (errors.length > 0) {
@@ -198,6 +207,12 @@ const createService = async (providerId, providerName, serviceData) => {
 
   validateServiceData(serviceData);
   const trimmedData = trimStringFields(serviceData);
+  console.log('[service.data] createService - incoming trimmed data:', {
+    title: trimmedData.title,
+    category: trimmedData.category,
+    price: trimmedData.price,
+    image: trimmedData.image
+  });
 
   const docRef = await collection.add({
     providerId,
@@ -206,6 +221,7 @@ const createService = async (providerId, providerName, serviceData) => {
     description: trimmedData.description,
     category: trimmedData.category,
     price: trimmedData.price,
+    image: (typeof trimmedData.image === 'string' && trimmedData.image.length) ? trimmedData.image : null,
     ratingAverage: 0,
     reviewsCount: 0,
     isActive: true,
@@ -213,7 +229,9 @@ const createService = async (providerId, providerName, serviceData) => {
     updatedAt: FieldValue.serverTimestamp()
   });
 
-  return getServiceById(docRef.id);
+  const created = await getServiceById(docRef.id);
+  console.log('[service.data] createService - created doc:', created);
+  return created;
 };
 
 /**

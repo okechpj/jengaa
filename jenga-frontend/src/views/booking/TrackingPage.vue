@@ -2,11 +2,14 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Navbar from '../../components/Navbar.vue';
-import { getBookingById, updateProviderLocation } from '../../services/api';
+import { getBookingById, updateProviderLocation, getServiceById } from '../../services/api';
 import { Phone, MessageSquare, ShieldCheck } from 'lucide-vue-next';
 
 const route = useRoute();
 const booking = ref(null);
+const providerRating = ref(null);
+const reviewsCount = ref(null);
+const scheduledDateFormatted = ref('');
 const mapContainer = ref(null);
 let map = null;
 let providerMarker = null;
@@ -21,10 +24,59 @@ const fetchBooking = async () => {
     try {
         const response = await getBookingById(route.params.bookingId);
         booking.value = response.data.data;
+        // Populate map markers
         updateMapMarkers();
+
+        // Fetch service to show rating/reviews if available
+        try {
+            if (booking.value && booking.value.serviceId) {
+                const svcRes = await getServiceById(booking.value.serviceId);
+                const svc = svcRes?.data?.data;
+                if (svc) {
+                    providerRating.value = typeof svc.ratingAverage === 'number' ? svc.ratingAverage : null;
+                    reviewsCount.value = typeof svc.reviewsCount === 'number' ? svc.reviewsCount : null;
+                }
+            }
+        } catch (svcErr) {
+            console.warn('Failed to fetch service for rating', svcErr);
+        }
+
+        // Parse and format scheduled date if present
+        try {
+            const sdRaw = booking.value?.scheduledDate;
+            const parsed = parseDate(sdRaw);
+            scheduledDateFormatted.value = parsed ? formatDate(parsed) : '';
+        } catch (dateErr) {
+            console.warn('Failed to parse scheduled date', dateErr);
+        }
     } catch (err) {
         console.error("Fetch error", err);
     }
+};
+
+/**
+ * Parse different timestamp shapes returned from the API / Firestore
+ */
+const parseDate = (d) => {
+    if (!d) return null;
+    // Firestore Timestamp shape
+    if (d.seconds && typeof d.seconds === 'number') return new Date(d.seconds * 1000);
+    if (d._seconds && typeof d._seconds === 'number') return new Date(d._seconds * 1000);
+    // If server already sent ISO string
+    if (typeof d === 'string') {
+        const dt = new Date(d);
+        return isNaN(dt.getTime()) ? null : dt;
+    }
+    // If it's already a Date
+    if (d instanceof Date) return d;
+    // Firestore client Timestamp may have toDate()
+    if (d.toDate && typeof d.toDate === 'function') return d.toDate();
+    return null;
+};
+
+const formatDate = (date) => {
+    if (!date) return '';
+    return date.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 const updateMapMarkers = () => {
@@ -241,10 +293,14 @@ const distanceInfo = computed(() => {
                  </div>
                  <div>
                      <h2 class="text-xl font-bold text-gray-900">{{ booking.providerName || 'Provider' }}</h2>
-                     <div class="flex items-center text-yellow-500 font-bold text-sm">
-                         ★ 4.9 <span class="text-gray-400 font-medium ml-1">(120 jobs)</span>
-                     </div>
-                     <div class="text-gray-500 text-xs mt-1">Toyota Prius • KBA 123A</div>
+                    <div class="flex items-center text-yellow-500 font-bold text-sm">
+                        <span class="mr-1">★</span>
+                        <span v-if="providerRating !== null">{{ providerRating.toFixed(1) }}</span>
+                        <span v-else>—</span>
+                        <span class="text-gray-400 font-medium ml-1">({{ reviewsCount ?? 0 }} jobs)</span>
+                    </div>
+                    <div class="text-gray-500 text-xs mt-1">Toyota Prius • KBA 123A</div>
+                    <div v-if="scheduledDateFormatted" class="text-gray-500 text-xs mt-1 font-medium">Scheduled: {{ scheduledDateFormatted }}</div>
                  </div>
                  <div class="ml-auto text-right">
                      <div class="text-2xl font-extrabold text-blue-900">{{ distanceInfo.time }}</div>

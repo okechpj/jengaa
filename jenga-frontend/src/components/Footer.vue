@@ -66,7 +66,7 @@ import { Twitter, Facebook, Instagram } from 'lucide-vue-next';
         <p>&copy; 2024 Jengaa Inc. All rights reserved.</p>
         <div class="flex space-x-6">
            <a href="#" class="hover:text-gray-600">English (US)</a>
-           <a href="#" class="hover:text-gray-600">$ USD</a>
+           <a href="#" class="hover:text-gray-600">Ksh.</a>
         </div>
       </div>
     </div>

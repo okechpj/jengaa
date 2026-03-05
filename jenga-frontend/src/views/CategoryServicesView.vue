@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getServices } from '../services/api';
 import ServiceCard from '../components/ServiceCard.vue';
+import ServiceDetailModal from '../components/ServiceDetailModal.vue';
 import EmptyState from '../components/EmptyState.vue';
 import Navbar from '../components/Navbar.vue';
 import Footer from '../components/Footer.vue';
@@ -75,6 +76,19 @@ const goBack = () => {
 onMounted(() => {
   fetchServices();
 });
+
+const selectedServiceId = ref(null);
+const showDetailModal = ref(false);
+
+const openService = (id) => {
+  selectedServiceId.value = id;
+  showDetailModal.value = true;
+};
+
+const closeDetail = () => {
+  selectedServiceId.value = null;
+  showDetailModal.value = false;
+};
 </script>
 
 <template>
@@ -141,6 +155,7 @@ onMounted(() => {
               v-for="service in services" 
               :key="service.id" 
               :service="service"
+              @open="openService"
             />
           </div>
 
@@ -160,5 +175,6 @@ onMounted(() => {
     </main>
 
     <Footer />
+    <ServiceDetailModal :isOpen="showDetailModal" :serviceId="selectedServiceId" @close="closeDetail" />
   </div>
 </template>

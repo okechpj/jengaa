@@ -99,3 +99,16 @@ const mintToken = async (req, res) => {
 };
 
 module.exports = { login, register, mintToken };
+
+// Return authenticated user info (requires authenticate middleware)
+const me = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Authentication required' });
+    const u = req.user;
+    return res.json({ success: true, data: { id: u.id, name: u.name, email: u.email, role: u.role } });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports = { login, register, mintToken, me };

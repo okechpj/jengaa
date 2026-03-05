@@ -3,19 +3,19 @@ import { Star } from 'lucide-vue-next';
 
 const testimonials = [
   {
-    name: "Sarah Miller",
-    role: "Homeowner, Austin",
+    name: "George  Kinyua",
+    role: "Homeowner, Ruiru",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
     text: "Jengaa saved my weekend! I had a burst pipe at 9PM on a Friday and found an expert plumber within 10 minutes. He arrived quickly and fixed everything perfectly."
   },
   {
-    name: "James Wilson",
-    role: "Business Owner, NYC",
+    name: "Grace Wanyama",
+    role: "Business Owner, Nairobi",
     image: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&q=80",
     text: "Finding reliable cleaning staff for my office used to be a headache. With Jengaa, I can see ratings and insurance info upfront. Truly a game changer for pros."
   },
   {
-    name: "Elena Rodriguez",
+    name: "Sam Otieno",
     role: "Property Manager",
     image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80",
     text: "The booking system is seamless. I manage 8 properties and Jengaa is my go-to for all maintenance needs. The providers are professional and punctual."

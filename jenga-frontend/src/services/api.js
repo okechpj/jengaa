@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'https://jengaa.onrender.com',
+    baseURL: 'https://jengaa.onrender.com' || 'http://localhost:3000',
     headers: {
     },
 });
@@ -23,16 +23,27 @@ api.interceptors.request.use(
 export const getServices = (params) => api.get('/services', { params });
 export const getCategories = () => api.get('/services/categories');
 export const getProviderServices = (providerId) => api.get(`/services/provider/${providerId}`);
+export const getServiceById = (id) => api.get(`/services/${id}`);
+export const updateService = (id, data) => api.patch(`/services/${id}`, data);
 
 export const getProviderBookings = (userId) => api.get(`/bookings/user/${userId}`);
 export const getBookingById = (id) => api.get(`/bookings/${id}`);
 export const updateBookingStatus = (bookingId, status) => api.patch(`/bookings/${bookingId}/status`, { status });
 export const createReview = (data) => api.post('/reviews', data);
+export const getMessagesForBooking = (bookingId) => api.get(`/messages/booking/${bookingId}`);
 
 export const acceptBooking = (id) => api.patch(`/bookings/${id}/accept`);
 export const declineBooking = (id) => api.patch(`/bookings/${id}/decline`);
 export const updateProviderLocation = (id, location) => api.patch(`/bookings/${id}/location`, location);
 
 export const createService = (data) => api.post('/services', data);
+
+export const updateBookingNotes = (id, data) => api.patch(`/bookings/${id}/notes`, data);
+
+// Availability endpoints
+export const getAvailabilitiesForService = (serviceId) => api.get(`/availability/services/${serviceId}`);
+export const createAvailability = (serviceId, data) => api.post(`/availability/services/${serviceId}`, data);
+export const updateAvailability = (id, data) => api.patch(`/availability/${id}`, data);
+export const deleteAvailability = (id) => api.delete(`/availability/${id}`);
 
 export default api;

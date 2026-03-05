@@ -5,6 +5,7 @@ import ProviderSidebar from '../../components/ProviderSidebar.vue';
 import StatCard from '../../components/StatCard.vue';
 import ServiceCard from '../../components/ServiceCard.vue'; // We might want a smaller version, but reusing for now
 import AddServiceModal from '../../components/AddServiceModal.vue';
+import EditServiceModal from '../../components/EditServiceModal.vue';
 import { Calendar, DollarSign, CheckCircle, Clock, Plus } from 'lucide-vue-next';
 import { getProviderBookings, getProviderServices, updateBookingStatus } from '../../services/api';
 
@@ -58,11 +59,24 @@ const handleStatusUpdate = async (bookingId, status) => {
     }
 };
 
-const handleServiceAdded = () => {
-    // Refresh services
-    getProviderServices(user.uid).then(res => {
+const handleServiceAdded = async () => {
+    // Refresh services after a new service is added
+    try {
+        const id = user.id || user.uid;
+        if (!id) return;
+        const res = await getProviderServices(id);
         services.value = res.data.data;
-    });
+    } catch (err) {
+        console.error('Failed to refresh services after add:', err);
+    }
+};
+
+const selectedService = ref(null);
+const showEditModal = ref(false);
+
+const openEdit = (service) => {
+    selectedService.value = service;
+    showEditModal.value = true;
 };
 
 const formatDate = (dateString, timeString) => {
@@ -72,6 +86,11 @@ const formatDate = (dateString, timeString) => {
         return new Date(dateString.seconds * 1000).toLocaleString();
     }
     return new Date(dateString).toLocaleString();
+};
+
+const formatKsh = (amount) => {
+    const n = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+    return `Ksh. ${n.toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 };
 
 const getStatusColor = (status) => {
@@ -116,12 +135,12 @@ const getStatusColor = (status) => {
           trend="+2 new"
           trendColor="bg-green-100 text-green-700"
         />
-        <StatCard 
-          title="Total Earnings" 
-          :value="`$${totalEarnings.toLocaleString()}`" 
-          :icon="DollarSign" 
-          trend="+15.4%"
-        />
+                <StatCard 
+                    title="Total Earnings" 
+                    :value="formatKsh(totalEarnings)" 
+                    :icon="DollarSign" 
+                    trend="+15.4%"
+                />
          <StatCard 
           title="Completed Bookings" 
           :value="bookings.filter(b => b.status === 'COMPLETED').length" 
@@ -205,15 +224,16 @@ const getStatusColor = (status) => {
                    <div v-if="services.length === 0" class="text-center py-8 text-gray-400 text-sm">
                        No services listed. Add your first one!
                    </div>
-                   <div v-for="service in services" :key="service.id" class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center group hover:border-blue-200 transition">
+                   <div v-for="service in services" :key="service.id" @click="openEdit(service)" class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center group hover:border-blue-200 transition cursor-pointer">
                        <div class="flex items-center gap-3">
-                           <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">
-                               <component v-if="service.category === 'plumbing'" :is="DollarSign" class="w-5 h-5" /> <!-- Placeholder icon logic, improve later -->
+                           <div class="w-10 h-10 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center text-blue-600 font-bold">
+                               <img v-if="service.image" :src="service.image" :alt="service.title" class="w-full h-full object-cover" />
+                               <component v-else-if="service.category === 'plumbing'" :is="DollarSign" class="w-5 h-5" />
                                <span v-else class="text-lg">🛠️</span>
                            </div>
                            <div>
                                <div class="font-bold text-gray-900 text-sm">{{ service.title }}</div>
-                               <div class="text-xs text-gray-500">${{ service.price }}/hr • {{ service.rating || 'New' }} ★</div>
+                               <div class="text-xs text-gray-500">{{ formatKsh(service.price) }}{{ '/hr' }} • {{ service.ratingAverage || 'New' }} ★</div>
                            </div>
                        </div>
                        <span :class="`px-2 py-[2px] rounded-md text-[10px] font-bold uppercase tracking-wider ${service.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`">
@@ -231,11 +251,12 @@ const getStatusColor = (status) => {
            </div>
       </section>
 
-      <AddServiceModal 
-        :isOpen="showAddServiceModal"
-        @close="showAddServiceModal = false"
-        @service-added="handleServiceAdded"
-      />
+            <AddServiceModal 
+                :isOpen="showAddServiceModal"
+                @close="showAddServiceModal = false"
+                @service-added="handleServiceAdded"
+            />
+            <EditServiceModal :service="selectedService" :isOpen="showEditModal" @close="showEditModal = false" @updated="handleServiceAdded" />
 
     </main>
   </div>

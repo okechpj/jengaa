@@ -13,6 +13,7 @@ const form = ref({
     title: '',
     category: 'plumbing',
     price: '',
+    image: '',
     description: ''
 });
 
@@ -43,7 +44,8 @@ const handleSubmit = async () => {
     try {
         const payload = {
             ...form.value,
-            price: parseFloat(form.value.price)
+            price: parseFloat(form.value.price),
+            image: form.value.image || null
         };
         
         await createService(payload);
@@ -53,6 +55,7 @@ const handleSubmit = async () => {
             title: '',
             category: 'plumbing',
             price: '',
+            image: '',
             description: ''
         };
 
@@ -111,7 +114,7 @@ const handleSubmit = async () => {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Price ($)</label>
+                                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Price (Ksh.)</label>
                         <input 
                           v-model="form.price" 
                           type="number" 
@@ -122,6 +125,16 @@ const handleSubmit = async () => {
                         />
                     </div>
                 </div>
+
+                                <div>
+                                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Image URL</label>
+                                        <input
+                                            v-model="form.image"
+                                            type="url"
+                                            placeholder="https://example.com/image.jpg"
+                                            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                        />
+                                </div>
 
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Description</label>

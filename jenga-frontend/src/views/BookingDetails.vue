@@ -1,15 +1,27 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from '../components/Navbar.vue';
+import ChatModal from '../components/ChatModal.vue';
 import { ChevronLeft, MessageSquare, Calendar, Clock, Star, ShieldCheck } from 'lucide-vue-next';
-import { getBookingById } from '../services/api';
+import { getBookingById, getServiceById, updateBookingStatus, createReview } from '../services/api';
 
 const route = useRoute();
 const router = useRouter();
 const booking = ref(null);
 const isLoading = ref(true);
 const error = ref(null);
+const isChatOpen = ref(false);
+
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+const isClient = user && user.role === 'CLIENT';
+
+const providerRating = ref(null);
+const providerReviewsCount = ref(null);
+const reviewsList = ref([]);
+const scheduledDateFormatted = ref('');
+const scheduledTimeFormatted = ref('');
 
 // Placeholder for provider details (since booking object might not have full provider profile)
 const provider = ref({
@@ -30,11 +42,66 @@ const fetchBooking = async () => {
              provider.value.name = booking.value.providerName; // Assuming providerName might be added or we use providerId
         }
 
+        // Try to fetch service snapshot to display rating/review counts
+        try {
+            if (booking.value && booking.value.serviceId) {
+                const svcRes = await getServiceById(booking.value.serviceId);
+                const svc = svcRes?.data?.data;
+                if (svc) {
+                    // fetch reviews for the service and compute average if available
+                    try {
+                        const reviewsRes = await axios.get(`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}/reviews/services/${booking.value.serviceId}`);
+                        const rv = reviewsRes.data.data || [];
+                        reviewsList.value = rv;
+                        if (rv.length > 0) {
+                            const sum = rv.reduce((acc, it) => acc + (it.rating || 0), 0);
+                            providerRating.value = sum / rv.length;
+                            providerReviewsCount.value = rv.length;
+                        } else {
+                            providerRating.value = typeof svc.ratingAverage === 'number' ? svc.ratingAverage : null;
+                            providerReviewsCount.value = typeof svc.reviewsCount === 'number' ? svc.reviewsCount : null;
+                        }
+                    } catch (rErr) {
+                        console.warn('Failed to fetch reviews for average', rErr);
+                        providerRating.value = typeof svc.ratingAverage === 'number' ? svc.ratingAverage : null;
+                        providerReviewsCount.value = typeof svc.reviewsCount === 'number' ? svc.reviewsCount : null;
+                    }
+                    // Ensure provider name/avatar available in the UI
+                    provider.value.name = booking.value.providerName || svc.providerName || provider.value.name;
+                    if (svc.providerAvatar) provider.value.avatar = svc.providerAvatar;
+                }
+            }
+        } catch (svcErr) {
+            console.warn('Failed to fetch service for provider rating', svcErr);
+        }
+
+        // Parse and format scheduled date/time
+        try {
+            const parsed = parseDate(booking.value?.scheduledDate || booking.value?.createdAt);
+            scheduledDateFormatted.value = parsed ? parsed.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'TBD';
+            scheduledTimeFormatted.value = parsed ? parsed.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'TBD';
+        } catch (e) {
+            scheduledDateFormatted.value = 'TBD';
+            scheduledTimeFormatted.value = 'TBD';
+        }
+
     } catch (err) {
         console.error("Failed to fetch booking", err);
         error.value = "Failed to load booking details.";
     } finally {
         isLoading.value = false;
+    }
+};
+
+const cancelBooking = async () => {
+    if (!booking.value || !booking.value.id) return;
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    try {
+        const res = await updateBookingStatus(booking.value.id, 'CANCELLED');
+        booking.value = res.data.data;
+        alert('Booking cancelled');
+    } catch (err) {
+        alert(err.response?.data?.error || 'Failed to cancel booking');
     }
 };
 
@@ -55,8 +122,27 @@ const formatDate = (dateString) => {
 
 const formatTime = (dateString) => {
     if (!dateString) return 'TBD';
-    const date = new Date(dateString.seconds ? dateString.seconds * 1000 : dateString);
+    const date = parseDate(dateString);
+    if (!date) return 'TBD';
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
+
+/**
+ * Robustly parse Firestore Timestamp shapes, ISO strings, or Date objects
+ */
+const parseDate = (d) => {
+    if (!d) return null;
+    // Firestore server timestamp object may come as { seconds: number, nanoseconds: number }
+    if (d.seconds && typeof d.seconds === 'number') return new Date(d.seconds * 1000);
+    if (d._seconds && typeof d._seconds === 'number') return new Date(d._seconds * 1000);
+    // If the backend serialized an ISO string
+    if (typeof d === 'string') {
+        const dt = new Date(d);
+        return isNaN(dt.getTime()) ? null : dt;
+    }
+    if (d.toDate && typeof d.toDate === 'function') return d.toDate();
+    if (d instanceof Date) return d;
+    return null;
 };
 
 const statusLabel = computed(() => {
@@ -74,8 +160,31 @@ const reviewComment = ref('');
 const isSubmittingReview = ref(false);
 
 const submitReview = async () => {
-    // Placeholder for review submission
-    alert(`Review submitted! Rating: ${reviewRating.value}, Comment: ${reviewComment.value}`);
+    if (!booking.value || !booking.value.id) return;
+    if (!reviewRating.value || reviewRating.value <= 0) {
+        alert('Please select a rating before submitting.');
+        return;
+    }
+    isSubmittingReview.value = true;
+    try {
+        const payload = {
+            bookingId: booking.value.id,
+            rating: reviewRating.value,
+            comment: reviewComment.value || ''
+        };
+        await createReview(payload);
+        alert('Review submitted. Thank you!');
+        // clear form
+        reviewRating.value = 0;
+        reviewComment.value = '';
+        // refresh booking (to pick up any changes if backend marks reviewed)
+        await fetchBooking();
+    } catch (err) {
+        console.error('Failed to submit review', err);
+        alert(err.response?.data?.error || 'Failed to submit review');
+    } finally {
+        isSubmittingReview.value = false;
+    }
 };
 
 </script>
@@ -125,10 +234,17 @@ const submitReview = async () => {
                               <div class="w-2 h-2 bg-green-400 rounded-full"></div>
                               Track Live Location
                           </button>
+                                                    <button
+                                                        v-if="isClient && booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED'"
+                                                        @click="cancelBooking"
+                                                        class="mt-4 ml-3 inline-block bg-red-100 hover:bg-red-200 text-red-700 text-sm font-bold py-2 px-4 rounded-full transition-all"
+                                                    >
+                                                            Cancel Booking
+                                                    </button>
                       </div>
                       <div class="text-right">
                           <div class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Total Price</div>
-                          <div class="text-4xl font-extrabold text-blue-900">${{ booking.servicePrice || '0.00' }}</div>
+                          <div class="text-4xl font-extrabold text-blue-900">Ksh {{ booking.servicePrice || '0.00' }}</div>
                       </div>
                   </div>
 
@@ -177,19 +293,28 @@ const submitReview = async () => {
                               <span v-else>👨‍🔧</span>
                           </div>
                           <div>
-                              <div class="text-xl font-bold text-gray-900">{{ provider.name }}</div>
+                              <div v-if="isClient" class="text-xl font-bold text-gray-900">{{ provider.name }}</div>
+                              <div v-else class="text-xl font-bold text-gray-900">{{ booking.client?.name || booking.clientName || 'Client' }}</div>
                               <div class="flex items-center text-sm text-blue-600 font-bold mt-1">
-                                  <Star class="w-4 h-4 fill-current mr-1" />
-                                  {{ provider.rating }} <span class="text-gray-400 font-medium ml-1">({{ provider.reviews }} reviews)</span>
+                                  <Star v-if="isClient" class="w-4 h-4 fill-current mr-1" />
+                                  <span v-if="isClient && providerRating !== null">{{ providerRating.toFixed(1) }}</span>
+                                  <!-- <span v-else>{{ provider.rating }}</span> -->
+                                  <span v-if="isClient" class="text-gray-400 font-medium ml-1">({{ providerReviewsCount ?? provider.reviews }} reviews)</span>
                               </div>
+                                                            <div v-if="!isClient" class="flex items-center text-sm text-blue-600 font-bold mt-1">
+                                                                <span v-if="booking.clientLocation && booking.clientLocation.address">{{ booking.clientLocation.address }}</span>
+                                                                <span v-else-if="booking.clientLocation && booking.clientLocation.lat && booking.clientLocation.lng">{{ booking.clientLocation.lat }}, {{ booking.clientLocation.lng }}</span>
+                                                                <span v-else>Location not provided</span>
+                                                            </div>
                           </div>
                       </div>
                   </div>
                   
-                  <button class="w-full mt-8 bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2">
+                          <button @click="isChatOpen = true" class="w-full mt-8 bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2">
                       <MessageSquare class="w-4 h-4" />
                       Message Provider
                   </button>
+                          <ChatModal :bookingId="booking.id" :isOpen="isChatOpen" :otherName="provider.name" @close="isChatOpen = false" />
               </div>
 
               <!-- Date & Time -->
@@ -202,7 +327,7 @@ const submitReview = async () => {
                               <Calendar class="w-5 h-5" />
                           </div>
                           <div>
-                              <div class="text-gray-900 font-bold">{{ formatDate(booking.scheduledDate) }}</div>
+                              <div class="text-gray-900 font-bold">{{ scheduledDateFormatted || formatDate(booking.scheduledDate) }}</div>
                               <div class="text-xs text-gray-500 font-medium">Visit Date</div>
                           </div>
                       </div>
@@ -212,7 +337,7 @@ const submitReview = async () => {
                               <Clock class="w-5 h-5" />
                           </div>
                           <div>
-                              <div class="text-gray-900 font-bold">{{ formatTime(booking.scheduledDate) }}</div>
+                              <div class="text-gray-900 font-bold">{{ scheduledTimeFormatted || formatTime(booking.scheduledDate) }}</div>
                               <div class="text-xs text-gray-500 font-medium">Arrival Window</div>
                           </div>
                       </div>
@@ -220,8 +345,9 @@ const submitReview = async () => {
               </div>
           </div>
 
+
           <!-- Review Section (Only if Completed) -->
-          <div v-if="booking.status === 'COMPLETED'" class="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+          <div v-if="isClient && booking.status === 'COMPLETED'" class="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
               <h2 class="text-xl font-bold text-gray-900 mb-2">Leave a Review</h2>
               <p class="text-gray-500 mb-8">How was your experience with {{ provider.name }}?</p>
 
